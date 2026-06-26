@@ -3,8 +3,6 @@
 AI-powered reading companion using DeepSeek + VS Code Copilot.  
 **Understand books deeply, not just re-read them.**
 
-[![Watch the setup - 1 minute](https://img.youtube.com/vi/TWOJE_VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=TWOJE_VIDEO_ID)
-
 ---
 
 ## What is this?
