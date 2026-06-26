@@ -89,13 +89,10 @@ Copilot will:
 your-book.epub
     │
     ▼
-scripts/parse_book.py       →  chapters/*.md
+scripts/parse_book.py       →  data/<book>/chapters/*.md
     │
     ▼
-scripts/pre_analyze.py      →  state/session_state.json  (key themes)
-    │
-    ▼
-AGENTS.md + VS Code Copilot →  interactive reading session
+AGENTS.md + VS Code Copilot →  extracts key themes → state/session_state.json
     │                           • Feedback Sandwich
     │                           • auto-updates state
     │                           • builds quiz pool
@@ -111,8 +108,8 @@ scripts/quiz_pool.py         →  deterministic MCQ with source citations
 |---|---|
 | Parse book | `uv run scripts/parse_book.py book.epub` |
 | Parse single chapter | `uv run scripts/parse_book.py book.pdf --chapter 3` |
-| Pre-analyze chapter | `uv run scripts/pre_analyze.py chapters/.../rozdzial_01.md` |
-| Re-analyze (force) | `uv run scripts/pre_analyze.py ... --force` |
+| Init chapter state | `uv run scripts/pre_analyze.py data/<book>/chapters/rozdzial_01.md` |
+| Reset chapter state | `uv run scripts/pre_analyze.py ... --force` |
 | Decide next action | `uv run scripts/decide.py` |
 | Add quiz question | `uv run scripts/quiz_pool.py add --chapter 1 --question "..." --correct "X" --wrong "A" "B" "C" --source-quote "..."` |
 | Generate quiz | `uv run scripts/quiz_pool.py generate --chapter 1 --count 5` |
@@ -125,13 +122,12 @@ scripts/quiz_pool.py         →  deterministic MCQ with source citations
 
 | Layer | Choice |
 |---|---|
-| LLM | DeepSeek (`deepseek-chat`, 1M context, Polish-friendly) |
-| Chat interface | VS Code Copilot (Agent mode, no UI to build) |
-| PDF parsing | Marker (local ML) → PyMuPDF (fallback) |
+| LLM | DeepSeek V4 (via VS Code extension, 1M context) |
+| Chat interface | VS Code Copilot (Agent mode — zero UI to build) |
+| PDF parsing | Marker (local ML) → PyMuPDF → HITL (manual) |
 | EPUB parsing | EbookLib |
 | Package mgr | uv |
-| State | JSON files (zero setup) |
-| Config | pydantic-settings from `.env` |
+| State | JSON files — no database, zero setup |
 | License | MIT |
 
 ---
