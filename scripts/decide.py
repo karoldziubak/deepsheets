@@ -3,8 +3,8 @@
 Given session state, decide the next action for the reading session.
 
 Usage:
-    uv run scripts/decide.py
-    uv run scripts/decide.py --state state/session_state.json
+    uv run scripts/decide.py --book overthinking_book
+    uv run scripts/decide.py                # scans all data/*/
 
 Output: JSON with recommended action.
 """
@@ -15,8 +15,7 @@ import json
 import sys
 from pathlib import Path
 
-
-STATE_FILE = Path("state/session_state.json")
+DATA_DIR = Path("data")
 
 
 def decide(state: dict) -> dict:
@@ -28,7 +27,7 @@ def decide(state: dict) -> dict:
         return {
             "action": "ask_followup",
             "theme": gap_themes[0]["name"],
-            "reason": f"user has a gap on '{gap_themes[0]['name']}': {gap_themes[0].get('gap', 'unknown')}",
+            "reason": f"gap: '{gap_themes[0].get('gap', 'unknown')}'",
         }
 
     uncovered = [t for t in themes if not t.get("covered")]
@@ -36,42 +35,40 @@ def decide(state: dict) -> dict:
         return {
             "action": "next_theme",
             "theme": uncovered[0]["name"],
-            "reason": f"theme '{uncovered[0]['name']}' not yet discussed",
+            "reason": f"not yet discussed",
         }
 
     if quiz_count >= 5:
-        return {
-            "action": "suggest_quiz",
-            "theme": None,
-            "reason": f"all themes covered, {quiz_count} quiz questions ready",
-        }
-
+        return {"action": "suggest_quiz", "reason": f"{quiz_count} questions ready"}
     if quiz_count < 3:
-        return {
-            "action": "exploratory",
-            "theme": None,
-            "reason": "all themes covered but only few quiz questions – explore deeper",
-        }
-
-    return {"action": "nothing", "theme": None, "reason": "all themes covered, quiz pool growing"}
+        return {"action": "exploratory", "reason": "few quiz questions"}
+    return {"action": "nothing", "reason": "all covered"}
 
 
 def main():
     parser = argparse.ArgumentParser(description="Decide next action based on session state.")
-    parser.add_argument("--state", type=Path, default=STATE_FILE, help="Path to session_state.json")
+    parser.add_argument("--book", type=str, default=None, help="Book slug")
     args = parser.parse_args()
 
-    if not args.state.exists():
-        print(json.dumps({"action": "exploratory", "theme": None, "reason": "no state file yet – start exploring"}))
-        return
+    books = [args.book] if args.book else [
+        d.name for d in DATA_DIR.iterdir() if d.is_dir()
+    ]
+    results = {}
+    for book in books:
+        state_file = DATA_DIR / book / "session_state.json"
+        if not state_file.exists():
+            results[book] = {"action": "no_state", "reason": "no session_state.json yet"}
+            continue
+        try:
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+            results[book] = decide(state)
+        except Exception as e:
+            results[book] = {"error": str(e)}
 
-    try:
-        state = json.loads(args.state.read_text(encoding="utf-8"))
-        decision = decide(state)
-        print(json.dumps(decision, indent=2, ensure_ascii=False))
-    except Exception as e:
-        print(json.dumps({"error": str(e)}))
-        sys.exit(1)
+    if len(results) == 1:
+        print(json.dumps(list(results.values())[0], indent=2, ensure_ascii=False))
+    else:
+        print(json.dumps(results, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

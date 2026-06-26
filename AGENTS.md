@@ -35,10 +35,10 @@ When the user sends their FIRST message, BEFORE anything else, check the environ
 ## Session Setup
 
 At the start of EVERY session:
-1. Read `state/session_state.json` (if it exists) to resume previous progress.
+1. Read `data/<book>/session_state.json` (if it exists) to resume previous progress.
 2. Read the chapter Markdown file for the current chapter.
 3. If state has no themes: extract 5-8 key themes from the chapter YOURSELF.
-   Write them to `state/session_state.json` using the format from the "State File Format" section.
+   Write them to `data/<book>/session_state.json` using the format from the "State File Format" section.
    Include: `name`, `description`, `importance` (core/supporting/detail), `covered: false`, `user_understands: null`, `gap: null`.
    Run `uv run scripts/pre_analyze.py data/<book>/chapters/rozdzial_XX.md` first to create the template, then edit it.
 4. If state is empty, ask: "Czy chcesz wkleić notatki z tego rozdziału, czy zaczynamy od razu?"
@@ -83,7 +83,7 @@ After each user response, BEFORE replying, evaluate silently:
 
 **5. UPDATE STATE FILE (after sending your response).**
    This is MANDATORY. After the user receives your message, silently:
-   - Open `state/session_state.json`
+   - Open `data/<book>/session_state.json`
    - Find the theme just discussed → set `covered`: true
    - Set `user_understands`: true (if no gaps) / false (if gaps found)
    - If false → set `gap`: short description of what was missed (max 10 words)
@@ -125,11 +125,11 @@ When to use each script:
 |---|---|
 | User wants to parse a new book | `uv run scripts/parse_book.py path/to/book.epub` |
 | User picks a chapter to discuss | `uv run scripts/pre_analyze.py data/<book>/chapters/rozdzial_XX.md` |
-| Unsure what to do next | `uv run scripts/decide.py` (use the JSON output) |
-| Built a quiz question from a gap | `uv run scripts/quiz_pool.py add --chapter N --question "..." --correct "..." --wrong "A" "B" "C" --source-quote "..."` |
-| User wants a quiz | `uv run scripts/quiz_pool.py generate --chapter N --count 5` |
-| Score a quiz answer | `uv run scripts/quiz_pool.py score --question-id N --user-answer "..."` |
-| Check quiz pool | `uv run scripts/quiz_pool.py list --chapter N` |
+| Unsure what to do next | `uv run scripts/decide.py --book <book>` (use the JSON output) |
+| Built a quiz question from a gap | `uv run scripts/quiz_pool.py add --book <book> --chapter N --question "..." --correct "..." --wrong "A" "B" "C" --source-quote "..."` |
+| User wants a quiz | `uv run scripts/quiz_pool.py generate --book <book> --chapter N --count 5` |
+| Score a quiz answer | `uv run scripts/quiz_pool.py score --book <book> --question-id N --user-answer "..."` |
+| Check quiz pool | `uv run scripts/quiz_pool.py list --book <book> --chapter N` |
 
 **Important:** Always run these in the workspace root (`cwd` where `pyproject.toml` is).
 If a command fails, tell the user what happened — don't silently retry more than once.
@@ -140,22 +140,22 @@ After approximately every 5 user messages, pause the conversation and summarize:
 
 > "Podsumujmy: omówiliśmy [X, Y]. Temat [Z] został tylko liźnięty – chcesz w niego wejść głębiej, czy idziemy dalej? Mam już [N] pytań do quizu."
 
-If unsure what to do next, run `uv run scripts/decide.py` and follow its recommendation.
+If unsure what to do next, run `uv run scripts/decide.py --book <book>` and follow its recommendation.
 
 ## Quiz Mode
 
 When the user says "chcę zrobić quiz" or you've suggested it and they agreed:
 
-1. **Run:** `uv run scripts/quiz_pool.py generate --chapter N --count 5`
+1. **Run:** `uv run scripts/quiz_pool.py generate --book <book> --chapter N --count 5`
 2. Present questions one at a time. Include the `source_quote` citation with each question.
-3. After each answer, **run:** `uv run scripts/quiz_pool.py score --question-id N --user-answer "..."` 
+3. After each answer, **run:** `uv run scripts/quiz_pool.py score --book <book> --question-id N --user-answer "..."` 
 4. Show the result + `source_quote` as evidence: "📖 Źródło: [cytat z rozdziału]"
 5. After all questions, give a summary: "4/5 poprawnych. [Temat X] wymaga powtórki."
 6. Update the state file: mark `user_understands` for themes where all quiz Qs were correct.
 
 ## State File Format
 
-The file `state/session_state.json` tracks progress. You MUST read it at session start and update it after significant progress. Format:
+The file `data/<book>/session_state.json` tracks progress. You MUST read it at session start and update it after significant progress. Format:
 
 ```json
 {

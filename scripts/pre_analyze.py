@@ -18,12 +18,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 STATE_DIR = Path("state")
-STATE_FILE = STATE_DIR / "session_state.json"
+
+
+def _state_file(book_slug: str) -> Path:
+    """Per-book state: data/<book>/session_state.json"""
+    return Path("data") / book_slug / "session_state.json"
 
 
 def init_state(chapter_path: Path, force: bool = False) -> dict:
-    if STATE_FILE.exists() and not force:
-        existing = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    book_slug = chapter_path.parent.parent.name
+    state_file = _state_file(book_slug)
+
+    if state_file.exists() and not force:
+        existing = json.loads(state_file.read_text(encoding="utf-8"))
         if existing.get("themes"):
             print("[pre_analyze] Themes already exist. Use --force to reset.")
             return existing
@@ -34,7 +41,7 @@ def init_state(chapter_path: Path, force: bool = False) -> dict:
     print("[pre_analyze] Themes will be extracted by Copilot during session.")
 
     state = {
-        "book": chapter_path.parent.name,
+        "book": book_slug,
         "chapter_name": chapter_path.stem,
         "chapter_file": str(chapter_path),
         "themes": [],
@@ -43,10 +50,10 @@ def init_state(chapter_path: Path, force: bool = False) -> dict:
     }
 
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(
+    state_file.write_text(
         json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    print(f"[pre_analyze] Template saved -> {STATE_FILE}")
+    print(f"[pre_analyze] Template saved -> {state_file}")
     return state
 
 

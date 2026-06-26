@@ -29,7 +29,6 @@ from typing import Optional
 # Constants
 # ---------------------------------------------------------------------------
 DATA_DIR = Path("data")
-STATE_DIR = Path("state")
 MARKER_CMD = "marker"
 
 
@@ -103,21 +102,48 @@ def _write_chapter(name: str, text: str, book_slug: str) -> Path:
 # PDF parsing
 # ---------------------------------------------------------------------------
 def parse_pdf_marker(pdf_path: Path, book_slug: str) -> list[Path]:
+    """Parse PDF using Marker (local ML) via marker_single CLI."""
+    import shutil
+
     output_dir = DATA_DIR / book_slug / "chapters"
     ensure_dir(output_dir)
 
+    # marker-pdf >=1.0 uses `marker_single` CLI, not `python -m marker`
+    marker_exe = shutil.which("marker_single")
+    if marker_exe is None:
+        marker_exe = str(Path(sys.executable).parent / "marker_single")
+        if sys.platform == "win32":
+            marker_exe += ".exe"
+
     cmd = [
-        sys.executable, "-m", "marker",
+        marker_exe,
         str(pdf_path),
-        str(output_dir / "_marker_output"),
         "--output_format", "markdown",
+        "--output_dir", str(output_dir / "_marker_output"),
     ]
     print(f"[marker] Running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    print("[marker] ⏳ Processing PDF — this may take a few minutes for large files...")
+    import time
+    start = time.time()
 
-    if result.returncode != 0:
-        print(f"[marker] STDERR:\n{result.stderr}")
-        raise RuntimeError(f"Marker failed with code {result.returncode}")
+    # Stream output in real-time so the user sees progress
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    assert proc.stdout is not None
+    last_line_time = start
+    for line in proc.stdout:
+        line = line.rstrip()
+        if line:
+            print(f"  {line}")
+            last_line_time = time.time()
+        elif time.time() - last_line_time > 15:
+            print("  .", end="", flush=True)
+            last_line_time = time.time()
+    proc.wait()
+    elapsed = time.time() - start
+    print(f"\n[marker] ✅ Done in {elapsed:.0f}s")
+
+    if proc.returncode != 0:
+        raise RuntimeError(f"Marker failed with code {proc.returncode}")
 
     marker_out = output_dir / "_marker_output"
     md_files = sorted(marker_out.rglob("*.md"))
@@ -288,7 +314,6 @@ def main():
         size_kb = f.stat().st_size / 1024
         print(f"   {f} ({size_kb:.1f} KB)")
 
-    ensure_dir(STATE_DIR)
     meta = {
         "book": book_path.stem,
         "book_slug": book_slug,
@@ -297,7 +322,8 @@ def main():
         "chapters": [f.name for f in chapter_files],
         "chapter_count": len(chapter_files),
     }
-    meta_path = STATE_DIR / f"{book_slug}_meta.json"
+    meta_path = DATA_DIR / book_slug / "meta.json"
+    meta_path.parent.mkdir(parents=True, exist_ok=True)
     meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"   Meta:  {meta_path}")
 
