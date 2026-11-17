@@ -27,6 +27,7 @@ Zero UI. Everything happens in VS Code Copilot chat (Agent mode).
 - [VS Code](https://code.visualstudio.com/) **1.116+**
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/) package manager
+- **LlamaParse API key** *(optional; PDF only — EPUB doesn't need it)* — enables cloud PDF parsing with the best layout quality. Get one at [cloud.llamaindex.ai](https://cloud.llamaindex.ai), then copy `.env.example` → `.env` and set `LLAMA_PARSE_API_KEY=llx-...`. Without it, text-based PDFs still parse locally (PyMuPDF).
 
 ### 2. Set up DeepSeek in Copilot
 
@@ -53,7 +54,8 @@ cd deepsheets
 # Install dependencies (creates .venv automatically)
 uv sync
 
-# Ready. No .env file needed — Copilot handles everything.
+# Ready. No .env file needed for EPUB or basic PDF parsing —
+# add LLAMA_PARSE_API_KEY to .env only for best-quality PDF parsing (see Prerequisites).
 ```
 
 ### 4. Open the folder in VS Code
